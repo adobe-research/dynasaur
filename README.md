@@ -9,7 +9,7 @@ Empirically, DynaSaur exhibits remarkable versatility, recovering automatically 
 ### 1. Create a `.env` file and add your keys:
 ```bash
 
-# Required: Main keys for the agent (we also support the OpenAI API)
+# Required: Main keys for the agent
 AZURE_API_KEY=""
 AZURE_ENDPOINT=""
 AZURE_API_VERSION=""
@@ -30,6 +30,11 @@ AZURE_GPT4V_API_VERSION=""
 ```
 
 ### 2. Download the GAIA files:
+You will need a Hugging Face (HF) access token with write permissions before cloning the GAIA repository. Visit [this page](https://huggingface.co/settings/tokens) to generate your token. Then log in to HF using the following command:
+```bash
+huggingface-cli login
+```
+Now we download the files with the commands below:
 ```bash
 mkdir data
 git clone https://huggingface.co/datasets/gaia-benchmark/GAIA
@@ -48,6 +53,9 @@ pip install -r requirements.txt
 ```bash
 python dynasaur.py
 ```
+
+# TODOs
+- [ ] Add support for the OpenAI API
 
 # Citation
 If you find this work useful, please cite the following:
