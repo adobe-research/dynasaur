@@ -58,7 +58,7 @@ python dynasaur.py
 - [ ] Add support for the OpenAI API
 
 # Citation
-If you find this work useful, please cite the following:
+If you find this work useful, please cite our [paper](https://arxiv.org/pdf/2411.01747):
 ```bibtex
 @article{nguyen2024dynasaur,
   title   = {DynaSaur: Large Language Agents Beyond Predefined Actions},
