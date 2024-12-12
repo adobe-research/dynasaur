@@ -13,6 +13,7 @@ Empirically, DynaSaur exhibits remarkable versatility, recovering automatically 
 AZURE_API_KEY=""
 AZURE_ENDPOINT=""
 AZURE_API_VERSION=""
+AZURE_MODEL_NAME=""
 
 # Required: Keys for embeddings used in action retrieval
 EMBED_MODEL_TYPE="AzureOpenAI"

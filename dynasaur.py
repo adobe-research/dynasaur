@@ -107,9 +107,16 @@ if __name__ == "__main__":
     parser.add_argument("--generated_action_dir", type=str, default="generated_actions")
     parser.add_argument("--set", type=str, default="validation")
     parser.add_argument("--split", type=str, default="2023_level1")
-    parser.add_argument("--model_name", type=str, default="gpt-4o-2024-08-06")
+    parser.add_argument("--model_name", type=str, default=os.getenv("CHAT_COMPLETION_NAME"))
     parser.add_argument("--max_iterations", type=int, default=20)
     args = parser.parse_args()
+
+    if args.model_name is None:
+        raise ValueError("model_name is not set. You may either pass it as a command line argument or set the AZURE_MODEL_NAME environment variable.")
+    
+
+    # print model_name
+    print("model_name:", args.model_name)
 
     agent_name = f"{args.model_name}-{args.split}"
     generated_action_dir = os.path.join(args.generated_action_dir, agent_name)
