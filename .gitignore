@@ -36,4 +36,5 @@ build/
 
 # Generated Directories
 data/
+outputs/
 generated_actions/
