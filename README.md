@@ -9,11 +9,15 @@ Empirically, DynaSaur exhibits remarkable versatility, recovering automatically 
 ### 1. Create a `.env` file and add your keys:
 ```bash
 
-# Required: Main keys for the agent
+# Required: Azure or OpenAI main keys for the agent
+# Azure Option
 AZURE_API_KEY=""
 AZURE_ENDPOINT=""
 AZURE_API_VERSION=""
 AZURE_MODEL_NAME=""
+# OpenAI Option
+OPENAI_API_KEY=""
+OPENAI_MODEL_NAME=""
 
 # Required: Keys for embeddings used in action retrieval
 EMBED_MODEL_TYPE="AzureOpenAI"
@@ -56,7 +60,7 @@ python dynasaur.py
 ```
 
 # TODOs
-- [ ] Add support for the OpenAI API
+- [x] Add support for the OpenAI API
 
 # Citation
 If you find this work useful, please cite our [paper](https://arxiv.org/pdf/2411.01747):

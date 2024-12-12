@@ -8,10 +8,44 @@ import actions
 from agents import StructuredOutputDynamicActionSpaceAgent
 from env import Env
 from prompts import ACTION_DESCRIPTION_TEMPLATE, DYNASAUR_PROMPT
-from scripts.llm_engines import AzureOpenAIEngine, StructuredOutputAzureOpenAIEngine
+from scripts.llm_engines import AzureOpenAIEngine, OpenAIEngine, StructuredOutputEngine
 from scripts.reformulator import prepare_response
 from scripts.run_agents import answer_questions
 
+
+def add_model_args(parser):
+    model_group = parser.add_argument_group('Model Configuration')
+    model_group.add_argument("--client", type=str, choices=['azure', 'openai', 'anthropic'], default='azure',
+                         help="Which client to use (azure, openai, or anthropic)")
+    model_group.add_argument("--model_name", type=str, 
+                         help="Model name. If not provided, will use default for chosen client")
+    return parser
+
+def get_default_model_name(client):
+    defaults = {
+        'azure': os.getenv("AZURE_MODEL_NAME"),
+        'openai': os.getenv("OPENAI_MODEL_NAME"),
+        'anthropic': "claude-3-sonnet-20240229"
+    }
+    name = defaults.get(client)
+    if name is None:
+        raise ValueError(f"No default model name for client: {client}")
+    return name
+
+def get_llm_engine(client, model_name=None):
+    """Factory function to create appropriate LLM engine based on client choice"""
+    if model_name is None:
+        model_name = get_default_model_name(client)
+    
+    if client == 'azure':
+        return AzureOpenAIEngine(model_name=model_name)
+    elif client == 'openai':
+        return OpenAIEngine(model_name=model_name)
+    elif client == 'anthropic':
+        # return AnthropicEngine(model_name=model_name)
+        raise ValueError("Anthropic client not supported yet")
+    else:
+        raise ValueError(f"Unknown client: {client}")
 
 def get_dataset(args):
     dataset = datasets.load_dataset("gaia-benchmark/GAIA", args.split)[args.set]
@@ -47,7 +81,18 @@ def get_env(args):
 
 
 def get_agent(args, env):
-    llm_engine = StructuredOutputAzureOpenAIEngine(model_name=args.model_name, response_format="thought_code")
+    base_engine = get_llm_engine(args.client, args.model_name)
+    
+    if isinstance(base_engine, (OpenAIEngine, AzureOpenAIEngine)):
+        llm_engine = StructuredOutputEngine(
+            model_name=base_engine.model_name, 
+            client=base_engine.client, 
+            response_format="thought_code"
+        )
+    else:
+        # # For non-OpenAI engines that don't support structured output
+        # llm_engine = base_engine
+        raise ValueError("Non-OpenAI engines not supported yet")
 
     # Load initial actions
     required_actions = list(actions.get_required_actions(args.generated_action_dir).values())
@@ -71,8 +116,8 @@ def get_agent(args, env):
 
 
 def get_agent_call_function(args):
-    llm_engine = AzureOpenAIEngine(args.model_name)
-
+    llm_engine = get_llm_engine(args.client, args.model_name)
+    
     def agent_call_function(agent, question: str, **kwargs) -> str:
         result = agent.run(question, **kwargs)
 
@@ -107,16 +152,19 @@ if __name__ == "__main__":
     parser.add_argument("--generated_action_dir", type=str, default="generated_actions")
     parser.add_argument("--set", type=str, default="validation")
     parser.add_argument("--split", type=str, default="2023_level1")
-    parser.add_argument("--model_name", type=str, default=os.getenv("CHAT_COMPLETION_NAME"))
     parser.add_argument("--max_iterations", type=int, default=20)
+    
+    # Add model configuration arguments
+    parser = add_model_args(parser)
     args = parser.parse_args()
 
     if args.model_name is None:
-        raise ValueError("model_name is not set. You may either pass it as a command line argument or set the AZURE_MODEL_NAME environment variable.")
-    
+        args.model_name = get_default_model_name(args.client)
+        if args.model_name is None and args.client == 'azure':
+            raise ValueError("model_name is required for Azure client. Set it via --model_name or AZURE_MODEL_NAME environment variable.")
 
-    # print model_name
-    print("model_name:", args.model_name)
+    # print client and model_name
+    print(f"Using {args.client} client with model: {args.model_name}")
 
     agent_name = f"{args.model_name}-{args.split}"
     generated_action_dir = os.path.join(args.generated_action_dir, agent_name)
