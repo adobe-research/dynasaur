@@ -32,3 +32,8 @@ build/
 
 # Logs
 *.log 
+
+
+# Generated Directories
+data/
+generated_actions/
