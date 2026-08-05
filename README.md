@@ -2,12 +2,13 @@
 
 <p align="center">
     <a href="https://arxiv.org/abs/2411.01747">
-        https://img.shields.io/badge/arXiv-2411.01747-b31b1b.svg
+        <img src="https://img.shields.io/badge/arXiv-2411.01747-b31b1b.svg" alt="arXiv">
     </a>
     <a href="https://openreview.net/forum?id=lv0cJ2pWVd">
-        https://img.shields.io/badge/COLM-2025-blue.svg
+        <img src="https://img.shields.io/badge/COLM-2025-blue.svg" alt="COLM 2025">
     </a>
 </p>
+
 
 DynaSaur is a dynamic LLM-based agent framework published at COLM 2025 that uses a programming language as a universal representation of its actions. At each step, it generates a Python snippet that either calls on existing actions or creates new ones when the current action set is insufficient. These new actions can be developed from scratch or formed by composing existing actions, gradually expanding a reusable library for future tasks.
 
