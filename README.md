@@ -1,11 +1,15 @@
 <h1 align="center">DynaSaur 🦖: Large Language Agents<br>Beyond Predefined Actions</h1>
+
 <p align="center">
     <a href="https://arxiv.org/abs/2411.01747">
-            <img alt="Build" src="https://img.shields.io/badge/arXiv-2411.01747-b31b1b.svg">
+        https://img.shields.io/badge/arXiv-2411.01747-b31b1b.svg
+    </a>
+    <a href="https://openreview.net/forum?id=lv0cJ2pWVd">
+        https://img.shields.io/badge/COLM-2025-blue.svg
     </a>
 </p>
 
-DynaSaur is a dynamic LLM-based agent framework that uses a programming language as a universal representation of its actions. At each step, it generates a Python snippet that either calls on existing actions or creates new ones when the current action set is insufficient. These new actions can be developed from scratch or formed by composing existing actions, gradually expanding a reusable library for future tasks.
+DynaSaur is a dynamic LLM-based agent framework published at COLM 2025 that uses a programming language as a universal representation of its actions. At each step, it generates a Python snippet that either calls on existing actions or creates new ones when the current action set is insufficient. These new actions can be developed from scratch or formed by composing existing actions, gradually expanding a reusable library for future tasks.
 
 Empirically, DynaSaur exhibits remarkable versatility, recovering automatically when no relevant actions are available or when existing actions fail due to unforeseen edge cases. As of this writing, it holds the top position on the [GAIA benchmark](https://huggingface.co/spaces/gaia-benchmark/leaderboard), and remains the leading non-ensemble method to date.
 
@@ -65,10 +69,10 @@ python dynasaur.py
 # Citation
 If you find this work useful, please cite our [paper](https://arxiv.org/pdf/2411.01747):
 ```bibtex
-@article{nguyen2024dynasaur,
+@inproceedings{nguyen2024dynasaur,
   title   = {DynaSaur: Large Language Agents Beyond Predefined Actions},
   author  = {Dang Nguyen and Viet Dac Lai and Seunghyun Yoon and Ryan A. Rossi and Handong Zhao and Ruiyi Zhang and Puneet Mathur and Nedim Lipka and Yu Wang and Trung Bui and Franck Dernoncourt and Tianyi Zhou},
-  year    = {2024},
-  journal = {arXiv preprint arXiv:2411.01747}
+  year    = {2025},
+  booktitle = {Proceedings of the Conference on Language Modeling}
 }
 ```
