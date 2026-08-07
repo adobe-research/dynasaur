@@ -8,7 +8,7 @@ import actions
 from agents import StructuredOutputDynamicActionSpaceAgent
 from env import Env
 from prompts import ACTION_DESCRIPTION_TEMPLATE, DYNASAUR_PROMPT
-from scripts.llm_engines import AzureOpenAIEngine, StructuredOutputAzureOpenAIEngine
+from scripts.llm_engines import AzureOpenAIEngine, StructuredOutputAzureOpenAIEngine, OpenAIEngine, StructuredOutputOpenAIEngine
 from scripts.reformulator import prepare_response
 from scripts.run_agents import answer_questions
 
@@ -46,8 +46,13 @@ def get_env(args):
     return env
 
 
-def get_agent(args, env):
-    llm_engine = StructuredOutputAzureOpenAIEngine(model_name=args.model_name, response_format="thought_code")
+LLM_ENGINE_TYPE = os.getenv("LLM_ENGINE_TYPE", "AzureOpenAI")
+
+def get_agent(dataset,args, env):
+    if LLM_ENGINE_TYPE == "OpenAI":
+        llm_engine = StructuredOutputOpenAIEngine(model_name=args.model_name, response_format="thought_code")
+    else:
+        llm_engine = StructuredOutputAzureOpenAIEngine(model_name=args.model_name, response_format="thought_code")
 
     # Load initial actions
     required_actions = list(actions.get_required_actions(args.generated_action_dir).values())
@@ -65,13 +70,18 @@ def get_agent(args, env):
         generated_tool_dir=args.generated_action_dir,
         disable_accum=disable_accum,
         env=env,
+        dataset=dataset,
+        num_examples_tasks=args.num_examples_tasks,
     )
 
     return agent
 
 
 def get_agent_call_function(args):
-    llm_engine = AzureOpenAIEngine(args.model_name)
+    if LLM_ENGINE_TYPE == "OpenAI":
+        llm_engine = OpenAIEngine(args.model_name)
+    else:
+        llm_engine = AzureOpenAIEngine(args.model_name)
 
     def agent_call_function(agent, question: str, **kwargs) -> str:
         result = agent.run(question, **kwargs)
@@ -109,6 +119,7 @@ if __name__ == "__main__":
     parser.add_argument("--split", type=str, default="2023_level1")
     parser.add_argument("--model_name", type=str, default="gpt-4o-2024-08-06")
     parser.add_argument("--max_iterations", type=int, default=20)
+    parser.add_argument("--num_examples_tasks", type=int, default=5)
     args = parser.parse_args()
 
     agent_name = f"{args.model_name}-{args.split}"
@@ -119,7 +130,7 @@ if __name__ == "__main__":
 
     dataset = get_dataset(args)
     env = get_env(args)
-    agent = get_agent(args, env)
+    agent = get_agent(dataset, args, env)
 
     agent_call_function = get_agent_call_function(args)
 

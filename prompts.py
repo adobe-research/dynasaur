@@ -30,6 +30,12 @@ At each step, output a JSON object in the following format:
 }
 ```
 
+# Example tasks
+You are provided with tasks which you might want to use the new function to solve. Generated new functions should be generalized enough to solve this.
+```
+<<example_tasks>>
+```
+
 # Available Functions
 You are provided with several available functions. If you need to discover more relevant functions, use the `get_relevant_tools` function.
 ```

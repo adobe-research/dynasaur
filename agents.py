@@ -5,7 +5,10 @@ from copy import deepcopy
 from glob import glob
 from typing import Callable, Dict, List, Optional, Union
 
-import transformers
+from langchain.embeddings.openai import OpenAIEmbeddings
+from langchain.vectorstores import Chroma
+from langchain_community.embeddings import OllamaEmbeddings
+from langchain_openai import AzureOpenAIEmbeddings
 from transformers.agents import Agent, ReactCodeAgent
 from transformers.agents.agents import (
     AgentExecutionError,
@@ -22,17 +25,28 @@ from env import Env
 from scripts.llm_engines import AzureOpenAIEngine
 from utils import GeneratedTool, add_parent_pointers, parse_generated_tools
 
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+OPENAI_ORGANIZATION = os.getenv("OPENAI_ORGANIZATION")
+
+EMBED_MODEL_TYPE = os.getenv("EMBED_MODEL_TYPE")
+EMBED_MODEL_NAME = os.getenv("EMBED_MODEL_NAME")
+
+AZURE_EMBED_MODEL_NAME = os.getenv("AZURE_EMBED_MODEL_NAME")
+AZURE_EMBED_API_KEY = os.getenv("AZURE_EMBED_API_KEY")
+AZURE_EMBED_ENDPOINT = os.getenv("AZURE_EMBED_ENDPOINT")
+AZURE_EMBED_API_VERSION = os.getenv("AZURE_EMBED_API_VERSION")
 
 # Define a timeout exception
 class TimeoutException(Exception):
     pass
 
 
-def format_prompt_with_tools(toolbox: Toolbox, prompt_template: str) -> str:
+def format_prompt_with_tools_and_tasks(toolbox: Toolbox, prompt_template: str, tasks: List[str], max_iterations: int) -> str:
     tool_descriptions = "\n".join([f"{tool.name}: {tool.description}" for tool in toolbox._tools.values()])
-    if tool_descriptions == "":
-        tool_descriptions = "None"
+    example_tasks = "".join([f"- {task}\n" for task in tasks])
     prompt = prompt_template.replace("<<tool_descriptions>>", tool_descriptions)
+    prompt = prompt.replace("<<example_tasks>>", example_tasks)
+    prompt = prompt.replace("<<max_iterations>>", str(max_iterations))
     return prompt
 
 
@@ -186,10 +200,47 @@ class UnrestrictedReactCodeAgent(ReactCodeAgent, AgentWithMetrics):
 
 
 class DynamicActionSpaceAgent(UnrestrictedReactCodeAgent):
-    def __init__(self, generated_tool_dir: str, disable_accum: bool = False, *args, **kwargs):
+    def __init__(self, dataset, generated_tool_dir: str, num_examples_tasks: int, disable_accum: bool = False, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.generated_tool_dir = generated_tool_dir
         self.disable_accum = disable_accum
+        self.num_examples_tasks = num_examples_tasks
+        if not self.disable_accum:
+            # Utilized the vectordb for relevant task generation
+            self.vectordb_path = f"{self.generated_tool_dir}/vectordb"
+
+            # Utilize the Chroma database and employ OpenAI Embeddings for vectorization (default: text-embedding-ada-002)
+            if EMBED_MODEL_TYPE == "OpenAI":
+                embedding_function = OpenAIEmbeddings(
+                    openai_api_key=OPENAI_API_KEY,
+                    openai_organization=OPENAI_ORGANIZATION,
+                )
+                embed_model_name = "openai"
+            elif EMBED_MODEL_TYPE == "OLLAMA":
+                embedding_function = OllamaEmbeddings(model=EMBED_MODEL_NAME)
+                embed_model_name = "ollama"
+            elif EMBED_MODEL_TYPE == "AzureOpenAI":
+                embedding_function = AzureOpenAIEmbeddings(
+                    api_key=AZURE_EMBED_API_KEY,
+                    azure_endpoint=AZURE_EMBED_ENDPOINT,
+                    azure_deployment=AZURE_EMBED_MODEL_NAME,
+                    openai_api_version=AZURE_EMBED_API_VERSION,
+                )
+                embed_model_name = AZURE_EMBED_MODEL_NAME
+
+            self.task_db = Chroma(
+                collection_name="task_vectordb",
+                embedding_function=embedding_function,
+                persist_directory=self.vectordb_path,
+            )
+
+            for task in dataset:
+                self.task_db.add_texts(
+                    texts=[task["question"]],
+                )
+            
+            self.task_db.persist()
+
 
         # Load generated tools from disk
         generated_tools: list[GeneratedTool] = []
@@ -243,18 +294,23 @@ class DynamicActionSpaceAgent(UnrestrictedReactCodeAgent):
         if len(kwargs) > 0:
             self.task += f"\nYou have been provided with these initial arguments: {str(kwargs)}."
         self.state = kwargs.copy()
-        self.system_prompt = transformers.agents.agents.format_prompt_with_tools(
+        # Sample relevant tasks 
+        if self.disable_accum:
+            # If we disable accum, we don't need to provide example tasks
+            tasks = []
+        else:
+            tasks = [doc.page_content for doc in self.task_db.similarity_search(task, k=self.num_examples_tasks)]
+        self.system_prompt = format_prompt_with_tools_and_tasks(
             self._toolbox,
             self.system_prompt_template,
-            self.tool_description_template,
+            tasks,
+            max_iterations=5
         )
         generated_tool_descriptions = self.generated_toolbox.show_tool_descriptions(self.tool_description_template)
         self.system_prompt = self.system_prompt.replace("<<generated_tool_descriptions>>", generated_tool_descriptions)
         self.logs = [{"system_prompt": self.system_prompt, "task": self.task}]
         self.logger.warn("\n" * 5)
         self.logger.warn("======== New task ========")
-        # self.logger.log(33, self.task)
-        # self.logger.debug("System prompt is as follows:")
         self.logger.warning("[SYSTEM_PROMPT]")
         self.logger.debug(self.system_prompt)
         self.logger.warning("[TASK]")

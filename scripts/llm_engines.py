@@ -11,11 +11,16 @@ openai_role_conversions = {MessageRole.TOOL_RESPONSE: MessageRole.USER}
 
 
 class OpenAIEngine:
-    def __init__(self, model_name="gpt-4o"):
+    def __init__(self, model_name="gpt-o1"):
         self.model_name = model_name
         self.client = OpenAI(
             api_key=os.getenv("OPENAI_API_KEY"),
         )
+        self.metrics = {
+            "num_calls": 0,
+            "prompt_tokens": 0,
+            "completion_tokens": 0,
+        }
 
     def __call__(self, messages, stop_sequences=[]):
         messages = get_clean_message_list(messages, role_conversions=openai_role_conversions)
@@ -140,6 +145,34 @@ class ThoughtActionFormat(BaseModel):
 
 
 class StructuredOutputAzureOpenAIEngine(AzureOpenAIEngine):
+    def __init__(self, response_format: str, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.response_format_str = response_format
+        if response_format == "thought_code":
+            self.response_format = ThoughtCodeFormat
+        elif response_format == "thought_action":
+            self.response_format = ThoughtActionFormat
+
+    def __call__(self, messages, temperature=0.5, stop_sequences=None, *args, **kwargs) -> dict:
+        messages = get_clean_message_list(messages, role_conversions=openai_role_conversions)
+
+        response = self.client.beta.chat.completions.parse(
+            model=self.model_name,
+            messages=messages,
+            response_format=self.response_format,
+            temperature=temperature,
+            *args,
+            **kwargs
+        )
+
+        # Update metrics
+        self.metrics["num_calls"] += 1
+        self.metrics["prompt_tokens"] += response.usage.prompt_tokens
+        self.metrics["completion_tokens"] += response.usage.completion_tokens
+
+        return response.choices[0].message.parsed
+
+class StructuredOutputOpenAIEngine(OpenAIEngine):
     def __init__(self, response_format: str, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.response_format_str = response_format
