@@ -812,7 +812,7 @@ class Env(BaseEnv):
         #         else:
         #             state.result += content
         state.pwd = self.working_dir
-        state.ls = subprocess.run(['ls'], cwd=self.working_dir, capture_output=True, text=True).stdout
+        state.ls = list_directory(self.working_dir)
         return state
         
         # if (
@@ -918,3 +918,14 @@ class Env(BaseEnv):
             ):  # Not sure why this is None sometimes. We should look into this
                 language.terminate()
             del self._active_languages[language_name]
+
+
+def list_directory(directory):
+    try:
+        # Get list of files and directories
+        items = os.listdir(directory)
+        # Format similar to ls/dir output
+        print("items:\n\n", '\n'.join(items))
+        return '\n'.join(items)
+    except Exception as e:
+        return str(e)
